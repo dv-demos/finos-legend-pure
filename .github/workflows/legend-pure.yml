@@ -1,0 +1,83 @@
+name: Legend Pure Build
+on:
+  push:
+    paths:
+      - '.github/workflows/legend-pure.yml'
+      - '.mvn/**'
+  workflow_dispatch:
+
+env:
+  MAVEN_OPTS: -XX:MaxRAMPercentage=80.0
+
+jobs:
+
+  build-without-cache:
+    runs-on:
+      - codebuild-dv-demos-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+
+      - uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: 25
+          distribution: 'zulu'
+
+      - name: Setup Maven
+        uses: gradle/develocity-actions/setup-maven@v2.5
+        with:
+          develocity-url: 'https://develocity-field.gradle.com'
+          develocity-access-key: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
+      - run: |
+          mvn clean install -DskipTests -T 4 \
+            --batch-mode \
+            --errors \
+            --no-transfer-progress \
+            -Ddevelocity.cache.local.enabled=false \
+            -Ddevelocity.cache.remote.enabled=false \
+            -Dscan.tag.NO_CACHE
+
+  build-with-build-cache:
+    runs-on:
+      - codebuild-dv-demos-runner-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+
+      - uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: 25
+          distribution: 'zulu'
+
+      - name: Setup Maven
+        uses: gradle/develocity-actions/setup-maven@v2.5
+        with:
+          develocity-url: 'https://develocity-field.gradle.com'
+          develocity-access-key: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
+      - run: |
+          mvn clean install -DskipTests -T 4 \
+            --batch-mode \
+            --errors \
+            --no-transfer-progress \
+            -Ddevelocity.cache.local.enabled=true \
+            -Ddevelocity.cache.local.storeEnabled=false \
+            -Ddevelocity.cache.remote.enabled=true \
+            -Ddevelocity.cache.remote.storeEnabled=true \
+            -Ddevelocity.edgeDiscovery=true \
+            -Dscan.tag.BUILD_CACHE
+
+  actions-timeline:
+    permissions:
+      actions: read
+    needs:
+      - build-without-cache
+      - build-with-build-cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Kesin11/actions-timeline@v2
+        with:
+          show-waiting-runner: false

@@ -8,6 +8,9 @@
 **/pom.xml.versionsBackup
 **/.develocity/**
 .mvn/**
+# dv-demos: keep the Develocity extension config under version control
+!.mvn/extensions.xml
+!.mvn/develocity.xml
 
 # Build
 **/target
